@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор конспектов</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Trebuchet+MS&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Trebuchet MS', 'Tahoma', 'Verdana', sans-serif;
+            min-height: 100vh;
+            /* Классический webcore фон — градиент небо + трава */
+            background: linear-gradient(180deg,
+                #4a90e2 0%,
+                #7ec8e3 30%,
+                #a8e6cf 60%,
+                #88d498 100%);
+            background-attachment: fixed;
+            padding: 30px 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Пузыри на фоне — классика frutiger aero */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(255,255,255,0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255,255,255,0.2) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.15) 0%, transparent 60%),
+                radial-gradient(circle at 10% 80%, rgba(255,255,255,0.25) 0%, transparent 45%),
+                radial-gradient(circle at 90% 20%, rgba(255,255,255,0.2) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Заголовок в стиле окна Windows XP */
+        .window-title {
+            background: linear-gradient(180deg,
+                #0058e6 0%,
+                #3a8cf5 40%,
+                #1a6de0 100%);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px 8px 0 0;
+            font-size: 1.1em;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .window-title::before {
+            content: '';
+            font-size: 1.2em;
+        }
+
+        .window-buttons {
+            margin-left: auto;
+            display: flex;
+            gap: 5px;
+        }
+
+        .window-btn {
+            width: 22px;
+            height: 22px;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            cursor: pointer;
+            background: linear-gradient(180deg, #f0f0f0, #c0c0c0);
+            color: #333;
+        }
+
+        .window-btn.close {
+            background: linear-gradient(180deg, #ff6b6b, #c92a2a);
+            color: white;
+        }
+
+        /* Основное окно */
+        .main-window {
+            background: linear-gradient(180deg,
+                #f5f9ff 0%,
+                #e8f4f8 50%,
+                #d4eef5 100%);
+            border: 2px solid #0058e6;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            padding: 25px;
+            box-shadow:
+                0 10px 30px rgba(0,0,0,0.2),
+                inset 0 1px 0 rgba(255,255,255,0.5);
+        }
+
+        h1 {
+            text-align: center;
+            color: #0058e6;
+            margin-bottom: 25px;
+            font-size: 2em;
+            text-shadow: 2px 2px 0px rgba(255,255,255,0.8);
+            font-weight: bold;
+        }
+
+        .upload-section {
+            margin-bottom: 25px;
+        }
+
+        /* Поле загрузки в стиле XP */
+        .file-input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 30px 20px;
+            background: linear-gradient(180deg,
+                #ffffff 0%,
+                #e8f4f8 100%);
+            border: 2px dashed #4a90e2;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow:
+                inset 0 2px 5px rgba(0,0,0,0.05),
+                0 2px 5px rgba(74,144,226,0.2);
+        }
+
+        .file-input-label:hover {
+            background: linear-gradient(180deg,
+                #f0f8ff 0%,
+                #d4eef5 100%);
+            border-color: #0058e6;
+            transform: translateY(-2px);
+        }
+
+        .file-input-label.has-file {
+            background: linear-gradient(180deg,
+                #d4edda 0%,
+                #b8e0c3 100%);
+            border-color: #28a745;
+            border-style: solid;
+        }
+
+        .file-input-label p:first-child {
+            font-size: 1.2em;
+            color: #0058e6;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .file-input-label p:last-child {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        /* Кнопка в стиле XP */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(180deg,
+                #5cb85c 0%,
+                #4cae4c 50%,
+                #449d44 100%);
+            color: white;
+            border: 2px solid #3d8b3d;
+            border-radius: 6px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            box-shadow:
+                0 3px 6px rgba(0,0,0,0.2),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+            font-family: 'Trebuchet MS', sans-serif;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: linear-gradient(180deg,
+                #6ec96e 0%,
+                #5cb85c 50%,
+                #4cae4c 100%);
+            transform: translateY(-2px);
+            box-shadow:
+                0 5px 10px rgba(0,0,0,0.25),
+                inset 0 1px 0 rgba(255,255,255,0.4);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow:
+                0 1px 3px rgba(0,0,0,0.2),
+                inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn:disabled {
+            background: linear-gradient(180deg, #ccc, #aaa);
+            border-color: #999;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* Результат в стиле окна */
+        .result-section {
+            margin-top: 25px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-header {
+            background: linear-gradient(180deg,
+                #0058e6 0%,
+                #3a8cf5 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px 6px 0 0;
+            font-weight: bold;
+            font-size: 1em;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-header::before {
+            content: '📝';
+        }
+
+        .result-box {
+            background: linear-gradient(180deg,
+                #ffffff 0%,
+                #f8fbff 100%);
+            border: 2px solid #0058e6;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            padding: 20px;
+            min-height: 150px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            color: #333;
+            font-size: 1em;
+            box-shadow:
+                inset 0 2px 5px rgba(0,0,0,0.05),
+                0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Ошибка в стиле XP error dialog */
+        .error {
+            background: linear-gradient(180deg,
+                #fff5f5 0%,
+                #ffe0e0 100%);
+            border: 2px solid #c92a2a;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+            color: #c92a2a;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 3px 8px rgba(201,42,42,0.2);
+        }
+
+        .error::before {
+            content: '❌';
+            font-size: 1.3em;
+        }
+
+        /* Модель инфо */
+        .model-info {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 10px;
+            font-style: italic;
+            text-align: right;
+        }
+
+        /* Анимация загрузки */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .btn.loading {
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Декоративные элементы */
+        .decoration-bubble {
+            position: fixed;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%,
+                rgba(255,255,255,0.6),
+                rgba(255,255,255,0.1));
+            border: 1px solid rgba(255,255,255,0.4);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bubble-1 {
+            width: 120px;
+            height: 120px;
+            top: 10%;
+            left: 5%;
+        }
+
+        .bubble-2 {
+            width: 80px;
+            height: 80px;
+            top: 60%;
+            right: 8%;
+        }
+
+        .bubble-3 {
+            width: 150px;
+            height: 150px;
+            bottom: 15%;
+            left: 10%;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 600px) {
+            body {
+                padding: 15px 10px;
+            }
+
+            .main-window {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .btn {
+                font-size: 1em;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Декоративные пузыри -->
+    <div class="decoration-bubble bubble-1"></div>
+    <div class="decoration-bubble bubble-2"></div>
+    <div class="decoration-bubble bubble-3"></div>
+
+    <div class="container">
+        <!-- Заголовок окна в стиле XP -->
+        <div class="window-title">
+            <span>Генератор конспектов</span>
+            <div class="window-buttons">
+                <div class="window-btn">_</div>
+                <div class="window-btn">□</div>
+                <div class="window-btn close">✕</div>
+            </div>
+        </div>
+
+        <!-- Основное содержимое -->
+        <div class="main-window">
+            <h1>ХЗ че написать сюда</h1>
+
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <label for="image-input" class="file-input-label" id="file-label">
+                        <p>📷 Нажмите или перетащите изображение сюда</p>
+                        <p>Поддерживаются: JPG, PNG, GIF</p>
+                    </label>
+                    <input type="file" id="image-input" accept="image/*">
+                </div>
+
+                <button class="btn" id="generate-btn" disabled>
+                    ✨ Сгенерировать конспект
+                </button>
+            </div>
+
+            <div class="result-section" id="result-section">
+                <div class="result-header">Конспект</div>
+                <div class="result-box" id="result-box"></div>
+                <div class="model-info" id="model-info"></div>
+            </div>
+
+            <div class="error" id="error-box" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('image-input');
+        const fileLabel = document.getElementById('file-label');
+        const generateBtn = document.getElementById('generate-btn');
+        const resultSection = document.getElementById('result-section');
+        const resultBox = document.getElementById('result-box');
+        const errorBox = document.getElementById('error-box');
+        const modelInfo = document.getElementById('model-info');
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const fileName = e.target.files[0].name;
+                fileLabel.innerHTML = `<p>✅ Выбран файл: ${fileName}</p><p>Нажмите кнопку для генерации</p>`;
+                fileLabel.classList.add('has-file');
+                generateBtn.disabled = false;
+                errorBox.style.display = 'none';
+            }
+        });
+
+        generateBtn.addEventListener('click', async function() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            generateBtn.disabled = true;
+            generateBtn.classList.add('loading');
+            generateBtn.textContent = ' Генерация...';
+            resultSection.classList.remove('show');
+            errorBox.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/generate/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrftoken
+                    }
+                });
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Получен не JSON:', text);
+                    throw new Error('Сервер вернул некорректный ответ');
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultBox.textContent = data.summary;
+                    resultSection.classList.add('show');
+
+                    if (data.model_used) {
+                        modelInfo.textContent = `Модель: ${data.model_used}`;
+                    }
+                } else {
+                    throw new Error(data.error || 'Произошла ошибка');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                errorBox.textContent = error.message;
+                errorBox.style.display = 'flex';
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('loading');
+                generateBtn.textContent = '✨ Сгенерировать конспект';
+            }
+        });
+    </script>
+</body>
+</html>

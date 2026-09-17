@@ -1,0 +1,1 @@
+web: gunicorn summary_app.wsgi:application
